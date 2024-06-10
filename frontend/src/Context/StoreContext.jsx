@@ -1,24 +1,35 @@
+import axios from "axios";
 import { createContext, useEffect, useState } from "react";
-import { food_list } from "../assets/assets";
+// import { food_list } from "../assets/assets";
 
 export const StoreContext = createContext(null)
 
 const StoreContextprovider = (props) => {
 
-    const [cartItems, setCaetItems] = useState({});
+    const [cartItems, setCartItems] = useState({});
+    const url = "http://localhost:4000"
+    const [token,setToken] = useState("")
+    const [food_list,setFoodList] = useState([])
+    //setting up a variable for the food list so that we can get food_list data from the database
 
-    const addToCart = (itemId) => {
+    const addToCart = async (itemId) => {
         if (!cartItems[itemId]) {
-            setCaetItems((prev) => ({ ...prev, [itemId]: 1 }))
+            setCartItems((prev) => ({ ...prev, [itemId]: 1 }))
         }
         else {
-            setCaetItems((prev) => ({ ...prev, [itemId]: prev[itemId] + 1 }))
+            setCartItems((prev) => ({ ...prev, [itemId]: prev[itemId] + 1 }))
+        }
+        if(token){
+            await axios.post(url+"/api/cart/add",{itemId},{headers:{token}})
         }
 
     }
 
-    const removeFromCart = (itemId) => {
-        setCaetItems((prev) => ({ ...prev, [itemId]: prev[itemId] - 1 }))
+    const removeFromCart = async (itemId) => {
+        setCartItems((prev) => ({ ...prev, [itemId]: prev[itemId] - 1 }))
+        if(token){
+            await axios.post(url+"/api/cart/remove",{itemId},{headers:{token}})
+        }
     }
 
     const getTotalCartAmount = () => {
@@ -32,13 +43,39 @@ const StoreContextprovider = (props) => {
         return totlAmount
     }
 
+    const fetchFoodList = async () =>{
+        const response = await axios.get(url+"/api/food/list")
+        setFoodList(response.data.data)
+    }
+
+    const loadCartData = async (token) =>{
+        const response = await axios.post(url+"/api/cart/get",{},{headers:{token}})
+        setCartItems(response.data.cartData);
+    }
+
+
+    useEffect(()=>{
+        async function loadData(){
+            await fetchFoodList()
+            if (localStorage.getItem("token")) {
+                setToken(localStorage.getItem("token"))
+                await loadCartData(localStorage.getItem("token"))
+            }
+        }
+        loadData();
+    },[])
+
+
     const contextValue = {
         food_list,
         cartItems,
-        setCaetItems,
+        setCartItems,
         addToCart,
         removeFromCart,
-        getTotalCartAmount
+        getTotalCartAmount,
+        url,
+        token,
+        setToken
     }
 
     return (
